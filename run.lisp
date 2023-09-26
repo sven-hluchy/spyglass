@@ -1,4 +1,4 @@
 (defun run ()
-  (when (load "sp.fasl")
-    (run "main.html" "output.lisp")))
+  (when (load "main.fasl")
+    (run "test.html" "output.lisp")))
 

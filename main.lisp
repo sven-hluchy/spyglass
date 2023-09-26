@@ -10,21 +10,48 @@
 ;;; implement
 ;;; - Completely forgot about the attributes of the nodes.
 
+;;; TODO remove the type attribute
 (defstruct node name attrs children type)
 
+;;; these elements are self-closing, i.e. they cannot have children.
+(defparameter *self-closing-elements*
+  '(:AREA :BASE :BR :COL :EMBED :HR :IMG :INPUT :LINK :META
+    :PARAM :SOURCE :TRACK :WBR))
+
+(defun split-string (string char)
+  (loop for i = 0 then (1+ j)
+        as j = (position char string :start i)
+        collect (subseq string i j)
+        while j))
+
+(defun split-at-unquoted-space (string)
+  (let ((inside-quotes nil)
+        (len (1- (length string)))
+        (pos 0))
+    (loop for i to len
+          when (eq (aref string i) #\")
+          do (setq inside-quotes (not inside-quotes))
+          when (and (eq (aref string i) #\Space)
+                    (not inside-quotes))
+          collect (let ((p pos))
+                    (setq pos (1+ i))
+                    (subseq string p i))
+          when (= i len)
+          collect (subseq string pos len))))
+          
+;;; finds all the occurrences of a certain character char within a (sub)string
 (defun find-all (string char &optional (start 0) result)
   (let ((position (position char string :start start)))
     (if position
         (find-all string char (1+ position) (append result (list position)))
         result)))
 
+;;; turns a string into a keyword, i.e. (parse-keyword "ABC") => :ABC
 (defun parse-keyword (string)
   (intern (string-upcase string) :keyword))
 
-(defparameter *self-closing-elements*
-  '(:AREA :BASE :BR :COL :EMBED :HR :IMG :INPUT :LINK :META
-    :PARAM :SOURCE :TRACK :WBR))
-
+;;; replaces all occurrences of a character with the provided character
+;;; new-char.
 (defun replace-char-in-string (original-string char-to-replace new-char)
   (let ((result-string (copy-seq original-string)))
     (loop for i from 0 below (length result-string)
@@ -46,18 +73,17 @@
              (if (or (eq (aref node 1) #\/) (eq (aref node (- (length node) 2)) #\/))
                  :END
                  :START))
-           (parse-attrs (string) nil)
-           (parse-attrs-fix (string)
-             (loop for pos in (find-all string #\=)
-                   collect (cons
-                             (parse-keyword (subseq string
-                                              (1+ (position #\Space (subseq string 0 pos)
-                                                            :from-end 1))
-                                              pos))
-                             (string-trim '(#\Space #\Newline #\")
-                                          (subseq string
-                                                  (1+ pos)
-                                                  (1+ (position #\" string :start (+ 2 pos))))))))
+           (parse-attrs (node)
+             (let ((pos (position #\Space node)))
+               (if pos
+                 (loop for item in (split-at-unquoted-space (subseq node (1+ pos)))
+                       ;; if there is a = in the attribute
+                       when (position #\= item)
+                       collect (let ((parts (split-string item #\=)))
+                                 (cons (remove #\" (car parts))
+                                       (remove #\" (cadr parts))))
+                       else collect item)
+                   nil)))
            (get-node-attrs (node)
              (let ((pos (position #\Space node)))
                (if pos
@@ -91,8 +117,8 @@
           do (setf lst (remove (node-name node) lst :key #'node-name)))
     lst))
 
-;; (append '(1 2 3) '(5))
-
+;;; TODO could be added into the run function as a label, as I don't see this
+;;; being used anywhere else.
 (defun read-html-file (filename)
   (with-open-file (stream filename :direction :input)
     (let ((string (make-string (file-length stream))))
@@ -107,47 +133,3 @@
       (with-standard-io-syntax
         (let ((*standard-output* stream))
           (print (parse-html (parse-nodes +html+))))))))
-
-#|
-
-<p class="ab dc" id="test"> => ... :ATTRS ((:CLASS . ("ad" "dc")) (:ID . ("id")))
-
-(assoc :class (node-attrs node))
-
-
-The naive approach I thought of goes as follows:
-- you get the next tag, let's say a <div> and find the next </div>. Everything in between is the innerHTML of this div tag.
-- for every tag in the innerHTML we do the same as we just did for the div.
-
-if a tag has many different children, such as
-<div>
-    <p>Hello</p>
-    <br />
-    <p>There</p>
-</div>
-
-div.text = "Hello There"
-p.text   = "Hello"
-p.text   = "There"
-
-The text of a node is the text enclosed in its own tags plus all the texts of their children.
-
-NOTE: The parser would probably just die when it encounters a <br> instead of a <br />.
-
-<div> ... </div>
-
-#S(NODE :TAG :P
-        :ATTRS ((:CLASS . ("ab" "ac")) (:ID . ("test")))
-        :PARENT ...
-        :CHILDREN NIL)
-
-A tag can have just the tagname, i.e. no attributes, such as
-    <p>Sample text</p>
-A tag can have a variable number of attributes
-
-or, a tag can have no attributes AND no closing tag, such as <br />
-
-<TAGNAME></TAGNAME>
-<TAGNAME ATTR1=\"...\" ... ATTRN=\"...\"></TAGNAME>
-<TAGNAME />
-|#
