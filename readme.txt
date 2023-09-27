@@ -1,20 +1,28 @@
-At the moment this thing works as follows:
-You have the `main.lisp` file which contains all the code for parsing the html
-document. Using `compile-file`, this file should be compiled and subsequently
-loaded. Using `run`, the program can be run on (hopefully) any well-formatted
-HTML document.
+The main purpose of this project is to take an HTML document and make it
+lisp-readable. This allows you to perform all sorts of algorithms on it. If you
+want to find all the <span>-elements in the document, you can do just that. If
+you wanted to get the average of all element occurences, you could probably do
+that as well. The only major thing which does not work at all is simple text
+scraping. This will probably be implemented in the near future though.
 
-Synopsis of `run`:
-`(run "input.html" "output.lisp")`.
+File structure:
 
-The `run.lisp` file does just that: It loads the compiled file and calls the
-`run` function.
++----------------+-------------------------------------------------------------+
+| spyglass.lisp  | contains the main code for parsing and analysing the nodes  |
+|                | of a supplied html document. The exported functions can be  |
+|                | used in other lisp files.                                   |
++----------------+-------------------------------------------------------------+
+| example.lisp   | an example use case of the spyglass library.                |
++----------------+-------------------------------------------------------------+
+| test.html      | an example file for a very simple HTML document. Spyglass   |
+|                | can also be run on more complex websites.                   |
++----------------+-------------------------------------------------------------+
 
-Due to how `print` works, i.e. it always prints to the stdout as well, the
-output will be both written to stdout and the provided output file. The idea is
-that this newly created .lisp file can then be loaded to act as a lisp-readable
-representation of the original HTML document.
+To use this project, the only thing you need is a working Lisp compiler. It
+should be enough to simply load the project file `spyglass.lisp`. After that,
+you should be able to use all of the exported functions.
 
-This project is both in early stages of development and also written in a very
-_interesting_ manner, if you will. This means that any actual features are not
-implemented as of yet.
+Example usage:
+
+`curl https://en.wikipedia.org/wiki/Main_Page -o main.html`, which can then be
+opened in Spyglass via `(parse "main.html")`. For an example see `example.lisp`.
