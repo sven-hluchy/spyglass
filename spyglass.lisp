@@ -1,11 +1,3 @@
-;;; in theory, this works, I would like to do some changes in the future, such
-;;; as:
-;;; - I don't really know how to incorporate the texts between the nodes into
-;;; this whole ordeal but I am sure that it's actually quite an easy thing to
-;;; implement
-;;; - Now onto the texts between nodes: Most importantly: Ignore the text
-;;; between script tags otherwise I don't know what could happen.
-
 (defpackage spyglass
   (:use :common-lisp)
   (:export #:make-node
@@ -13,6 +5,7 @@
            #:node-p
            #:node-name
            #:node-attrs
+           #:node-text
            #:node-children
            #:collect-nodes
            #:parse
@@ -20,7 +13,7 @@
 
 (in-package :spyglass)
 
-(defstruct node name attrs children)
+(defstruct node name attrs text children)
 
 ;;; these elements are self-closing, i.e. they cannot have children.
 (defparameter *self-closing-elements*
@@ -48,11 +41,11 @@
           when (= i len)
           collect (subseq string pos len))))
           
-;;; finds all the occurrences of a certain character char within a (sub)string
-(defun find-all (string char &optional (start 0) result)
-  (let ((position (position char string :start start)))
+;;; finds all the occurrences of a certain substring within a string
+(defun find-all (string substr &optional (start 0) result)
+  (let ((position (search substr string :start2 start)))
     (if position
-        (find-all string char (1+ position) (append result (list position)))
+        (find-all string substr (+ (length substr) position) (append result (list position)))
         result)))
 
 ;;; turns a string into a keyword, i.e. (parse-keyword "ABC") => :ABC
@@ -72,12 +65,26 @@
   (replace-char-in-string (remove #\Newline string)
                           #\Tab #\Space))
 
+(defun string-prefix-p (string prefix)
+  (when (< (length prefix)
+           (length string))
+  (string= (subseq string 0 (length prefix)) prefix)))
+
 (defun parse-nodes (html)
   (labels ((get-all-nodes (html)
-             (loop for pos in (find-all html #\<)
+             (loop for pos in (find-all html "<")
+                   as tagname = (sanitize-string (subseq html pos (1+ (position #\> html :start pos))))
                    when (char/= (aref html (1+ pos)) #\!)
-                   collect (sanitize-string
-                                   (subseq html pos (1+ (position #\> html :start pos))))))
+                   collect (list tagname
+                                 (if (string-prefix-p tagname "<script")
+                                     nil
+                                     (let ((text (sanitize-string
+                                                   (subseq html
+                                                           (1+ (position #\> html :start (1+ pos)))
+                                                           (position #\< html :start (1+ pos))))))
+                                       (if (string/= (string-trim " " text) "")
+                                           text
+                                           nil))))))
            (get-node-attrs (node)
              (let ((pos (position #\Space node)))
                (if pos
@@ -95,9 +102,11 @@
                        (or (position #\Space node)
                            (position #\> node))))))
     (loop for node in (get-all-nodes html)
-          collect (make-node :name (get-node-name node)
-                             :attrs (get-node-attrs node)
+          collect (make-node :name (get-node-name (car node))
+                             :attrs (get-node-attrs (car node))
+                             :text (cadr node)
                              :children nil))))
+
 (defun parse-html (nodes)
   (let ((lst (list (make-node :name "~toplevel~"))))
     (loop for node in nodes
