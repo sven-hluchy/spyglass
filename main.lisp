@@ -8,15 +8,15 @@
 ;;; - I don't really know how to incorporate the texts between the nodes into
 ;;; this whole ordeal but I am sure that it's actually quite an easy thing to
 ;;; implement
-;;; - Completely forgot about the attributes of the nodes.
+;;; - Now onto the texts between nodes: Most importantly: Ignore the text
+;;; between script tags otherwise I don't know what could happen.
 
-;;; TODO remove the type attribute
-(defstruct node name attrs children type)
+(defstruct node name attrs children)
 
 ;;; these elements are self-closing, i.e. they cannot have children.
 (defparameter *self-closing-elements*
-  '(:AREA :BASE :BR :COL :EMBED :HR :IMG :INPUT :LINK :META
-    :PARAM :SOURCE :TRACK :WBR))
+  '(:area :base :br :col :embed :hr :img :input :link
+    :meta :param :source :track :wbr))
 
 (defun split-string (string char)
   (loop for i = 0 then (1+ j)
@@ -69,52 +69,42 @@
                    when (char/= (aref html (1+ pos)) #\!)
                    collect (sanitize-string
                                    (subseq html pos (1+ (position #\> html :start pos))))))
-           (get-node-type (node)
-             (if (or (eq (aref node 1) #\/) (eq (aref node (- (length node) 2)) #\/))
-                 :END
-                 :START))
-           (parse-attrs (node)
+           (get-node-attrs (node)
              (let ((pos (position #\Space node)))
                (if pos
                  (loop for item in (split-at-unquoted-space (subseq node (1+ pos)))
                        ;; if there is a = in the attribute
                        when (position #\= item)
                        collect (let ((parts (split-string item #\=)))
-                                 (cons (remove #\" (car parts))
+                                 (cons (parse-keyword (remove #\" (car parts)))
                                        (remove #\" (cadr parts))))
-                       else collect item)
-                   nil)))
-           (get-node-attrs (node)
-             (let ((pos (position #\Space node)))
-               (if pos
-                   (parse-attrs (subseq node pos))
-                   nil)))
+                       else collect item))))
            (get-node-name (node)
              (parse-keyword
                (subseq node
-                       (if (eq (aref node 1) #\/)
-                           2
-                           1)
+                       1
                        (or (position #\Space node)
                            (position #\> node))))))
     (loop for node in (get-all-nodes html)
           collect (make-node :name (get-node-name node)
                              :attrs (get-node-attrs node)
-                             :children nil
-                             :type (get-node-type node)))))
+                             :children nil))))
 
 (defun parse-html (nodes)
   (let ((lst (list (make-node :name "~toplevel~"))))
     (loop for node in nodes
-          when (eq (node-type node) :START)
+          as name = (node-name node)
+          as type = (position #\/ (symbol-name name))
+          as tag = (parse-keyword (subseq (symbol-name name) 1))
+          when (not type)
           do (progn
                (setf (node-children (car lst))
-                     (append (node-children (car lst)) (list node))))
-          (when (not (member (node-name node) *self-closing-elements*))
-            (setf lst (cons node lst)))
-          when (and (eq (node-type node) :END)
-                    (member (node-name node) lst :key #'node-name :test #'string=))
-          do (setf lst (remove (node-name node) lst :key #'node-name)))
+                     (append (node-children (car lst)) (list node)))
+               (when (not (member name *self-closing-elements*))
+                 (setf lst (cons node lst))))
+          when (and type
+                    (member tag lst :key #'node-name))
+          do (setf lst (remove tag lst :key #'node-name)))
     lst))
 
 ;;; TODO could be added into the run function as a label, as I don't see this
