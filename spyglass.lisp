@@ -1,15 +1,24 @@
 ;;; in theory, this works, I would like to do some changes in the future, such
 ;;; as:
-;;; - remove the type of the node, as this will be type :START over and over
-;;; again anyhow, so I might as well remove it. I will then close the tags in
-;;; the parse-html function such that it works via the / in the name of the
-;;; closing tags. This should also free up some memory, because vlime just
-;;; straight up dies when I try to run the program on the wikipedia homepage.
 ;;; - I don't really know how to incorporate the texts between the nodes into
 ;;; this whole ordeal but I am sure that it's actually quite an easy thing to
 ;;; implement
 ;;; - Now onto the texts between nodes: Most importantly: Ignore the text
 ;;; between script tags otherwise I don't know what could happen.
+
+(defpackage spyglass
+  (:use :common-lisp)
+  (:export #:make-node
+           #:node
+           #:node-p
+           #:node-name
+           #:node-attrs
+           #:node-children
+           #:collect-nodes
+           #:parse
+           #:parse-into-file))
+
+(in-package :spyglass)
 
 (defstruct node name attrs children)
 
@@ -89,7 +98,6 @@
           collect (make-node :name (get-node-name node)
                              :attrs (get-node-attrs node)
                              :children nil))))
-
 (defun parse-html (nodes)
   (let ((lst (list (make-node :name "~toplevel~"))))
     (loop for node in nodes
@@ -107,6 +115,15 @@
           do (setf lst (remove tag lst :key #'node-name)))
     lst))
 
+(defun collect-nodes (root predicate &optional (lst '()))
+  (if root
+      (let ((result lst))
+        (when (funcall predicate root)
+          (setq result (cons root result)))
+        (dolist (child (node-children root))
+          (setq result (collect-nodes child predicate result)))
+        result)))
+
 ;;; TODO could be added into the run function as a label, as I don't see this
 ;;; being used anywhere else.
 (defun read-html-file (filename)
@@ -115,7 +132,11 @@
       (read-sequence string stream)
       string)))
 
-(defun run (input-file output-file)
+(defun parse (input-file)
+  (let ((+html+ (read-html-file input-file)))
+    (parse-html (parse-nodes +html+))))
+
+(defun parse-into-file (input-file output-file)
   (let ((+html+ (read-html-file input-file)))
     (with-open-file (stream output-file
                             :direction :output

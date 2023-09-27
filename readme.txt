@@ -18,4 +18,3 @@ representation of the original HTML document.
 This project is both in early stages of development and also written in a very
 _interesting_ manner, if you will. This means that any actual features are not
 implemented as of yet.
-

@@ -1,10 +1,7 @@
-(load "sp.fasl")
+(load "spyglass.lisp")
+(in-package :spyglass)
 
-(defvar +html+
-  (read (open "output.lisp")))
-
-(let ((root (car +html+)))
-  (loop for child in (node-children root)
-        when (eq (node-name child) :HTML)
-        do (print child)))
+;; This collects all HTML nodes of type span
+(let ((+root+ (read (open "output.lisp"))))
+  (collect-nodes (car +root+) #'(lambda (x) (eq (node-name x) :SPAN))))
 
