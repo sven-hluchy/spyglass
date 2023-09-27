@@ -2,8 +2,7 @@ The main purpose of this project is to take an HTML document and make it
 lisp-readable. This allows you to perform all sorts of algorithms on it. If you
 want to find all the <span>-elements in the document, you can do just that. If
 you wanted to get the average of all element occurences, you could probably do
-that as well. The only major thing which does not work at all is simple text
-scraping. This will probably be implemented in the near future though.
+that as well.
 
 File structure:
 

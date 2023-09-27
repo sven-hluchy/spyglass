@@ -1,3 +1,7 @@
+;; inline javascript is giving me headaches; I just ended up deleting all the
+;; <script> nodes. Still, there are some other issues in bigger documents,
+;; probably the likes of css or svg, or something else even.
+
 (defpackage spyglass
   (:use :common-lisp)
   (:export #:make-node
@@ -65,26 +69,35 @@
   (replace-char-in-string (remove #\Newline string)
                           #\Tab #\Space))
 
-(defun string-prefix-p (string prefix)
-  (when (< (length prefix)
-           (length string))
-  (string= (subseq string 0 (length prefix)) prefix)))
+(defun delete-substring (string start end)
+  (let ((before (subseq string 0 start))
+        (after (subseq string (1+ end))))
+    (concatenate 'string before after)))
 
 (defun parse-nodes (html)
-  (labels ((get-all-nodes (html)
+  (labels ((remove-js (html)
+             (let* ((start (search "<script" html))
+                    (end (position #\> html :start (or
+                                                     (search "</script" html)
+                                                     0))))
+               (if (or (null start) (null end))
+                   html
+                   (remove-js (delete-substring html start end)))))
+           (sanitize (html)
+             (remove-js html))
+           (get-all-nodes (html)
+             ;; TODO I need to somehow make find-all ignore javascript
              (loop for pos in (find-all html "<")
                    as tagname = (sanitize-string (subseq html pos (1+ (position #\> html :start pos))))
                    when (char/= (aref html (1+ pos)) #\!)
                    collect (list tagname
-                                 (if (string-prefix-p tagname "<script")
-                                     nil
-                                     (let ((text (sanitize-string
-                                                   (subseq html
-                                                           (1+ (position #\> html :start (1+ pos)))
-                                                           (position #\< html :start (1+ pos))))))
-                                       (if (string/= (string-trim " " text) "")
-                                           text
-                                           nil))))))
+                                 (let ((text (sanitize-string
+                                               (subseq html
+                                                       (1+ (position #\> html :start (1+ pos)))
+                                                       (position #\< html :start (1+ pos))))))
+                                   (if (string/= (string-trim " " text) "")
+                                       text
+                                       nil)))))
            (get-node-attrs (node)
              (let ((pos (position #\Space node)))
                (if pos
@@ -101,7 +114,7 @@
                        1
                        (or (position #\Space node)
                            (position #\> node))))))
-    (loop for node in (get-all-nodes html)
+    (loop for node in (get-all-nodes (sanitize html))
           collect (make-node :name (get-node-name (car node))
                              :attrs (get-node-attrs (car node))
                              :text (cadr node)
