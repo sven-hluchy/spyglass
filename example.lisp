@@ -9,6 +9,4 @@
 (let ((+root+ (parse "test.html")))
   (loop for node in (collect-nodes (car +root+)
                                    #'(lambda (x) (eq (node-name x) :A)))
-        collect (assoc :HREF (node-attrs node))))
-
-
+       collect (node-text node))) 
