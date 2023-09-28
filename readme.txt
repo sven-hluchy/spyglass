@@ -4,6 +4,9 @@ want to find all the <span>-elements in the document, you can do just that. If
 you wanted to get the average of all element occurences, you could probably do
 that as well.
 
+The only remaining major weakness (I have tested for) is that JSON data in an
+attribute string can cause some issues.
+
 File structure:
 
 +----------------+-------------------------------------------------------------+
@@ -25,3 +28,6 @@ Example usage:
 
 `curl https://en.wikipedia.org/wiki/Main_Page -o main.html`, which can then be
 opened in Spyglass via `(parse "main.html")`. For an example see `example.lisp`.
+
+Instead of parsing the same file over and over again, you can also save the
+result of a call to parse in an external file using `parse-into-file`.
