@@ -8,6 +8,7 @@
            #:node-text
            #:node-children
            #:collect-nodes
+           #:node-has
            #:parse
            #:parse-into-file))
 
@@ -126,6 +127,9 @@
         (dolist (child (node-children root))
           (setq result (collect-nodes child predicate result)))
         result)))
+
+(defun node-has (node attribute value)
+  (member value (split-string (cdr (assoc attribute (node-attrs node))) #\Space) :test #'string=))
 
 (defun parse (input-file)
   (let ((+html+ (read-html-file input-file)))
