@@ -7,6 +7,14 @@ that as well.
 The only remaining major weakness (I have tested for) is that JSON data in an
 attribute string can cause some issues.
 
+Example usage:
+
+`curl https://en.wikipedia.org/wiki/Main_Page -o main.html`, which can then be
+opened in Spyglass via `(parse "main.html")`. For an example see `example.lisp`.
+
+Instead of parsing the same file over and over again, you can also save the
+result of a call to parse in an external file using `parse-into-file`.
+
 File structure:
 
 +----------------+-------------------------------------------------------------+
@@ -24,10 +32,31 @@ To use this project, the only thing you need is a working Lisp compiler. It
 should be enough to simply load the project file `spyglass.lisp`. After that,
 you should be able to use all of the exported functions.
 
-Example usage:
+Exported Symbols:
 
-`curl https://en.wikipedia.org/wiki/Main_Page -o main.html`, which can then be
-opened in Spyglass via `(parse "main.html")`. For an example see `example.lisp`.
+make-node:
+`make-node &key name attrs text children`
+creates a new instance of a struct node
 
-Instead of parsing the same file over and over again, you can also save the
-result of a call to parse in an external file using `parse-into-file`.
+node-p:
+`node-p instance`
+returns true when instance is of type node
+
+node-name:
+`node-name instance`
+returns the name of a node
+
+node-attrs:
+`node-attrs instance`
+returns the list of attributes of a node, attributes are saved in the following
+format: ((:KEY . "value") ...)
+
+node-children:
+`node-children instance`
+returns the list of children of a node
+
+collect-nodes:
+`collect-nodes root predicate`
+returns all child nodes of root and root itself for which the predicate function
+returns true.
+
