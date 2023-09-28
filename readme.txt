@@ -24,9 +24,6 @@ File structure:
 +----------------+-------------------------------------------------------------+
 | example.lisp   | an example use case of the spyglass library.                |
 +----------------+-------------------------------------------------------------+
-| test.html      | an example file for a very simple HTML document. Spyglass   |
-|                | can also be run on more complex websites.                   |
-+----------------+-------------------------------------------------------------+
 
 To use this project, the only thing you need is a working Lisp compiler. It
 should be enough to simply load the project file `spyglass.lisp`. After that,
@@ -55,8 +52,16 @@ node-children:
 `node-children instance`
 returns the list of children of a node
 
-collect-nodes:
-`collect-nodes root predicate`
+find-all-nodes:
+`collect-nodes node predicate`
 returns all child nodes of root and root itself for which the predicate function
-returns true.
+returns true
+
+find-node:
+`find-node node predicate`
+returns the first node which satisfies the predicate
+
+node-has:
+`node-has node attribute value`
+returns whether or not the attribute of a node has a certain value
 

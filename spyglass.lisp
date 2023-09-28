@@ -7,8 +7,10 @@
            #:node-attrs
            #:node-text
            #:node-children
-           #:collect-nodes
+           #:find-node
+           #:find-all-nodes
            #:node-has
+           #:node-text-rec
            #:parse
            #:parse-into-file))
 
@@ -119,17 +121,35 @@
           do (setf lst (remove closetag lst :key #'node-name)))
     lst))
 
-(defun collect-nodes (root predicate &optional (lst '()))
+;; finds the first node that matches the predicate
+(defun find-node (root predicate)
+  (if (funcall predicate root)
+      root
+      (dolist (child (node-children root))
+        (let ((result (find-node child predicate)))
+          (when result
+            (return-from find-node result))))))
+
+(defun find-all-nodes (root predicate &optional (lst '()))
   (if root
       (let ((result lst))
         (when (funcall predicate root)
           (setq result (append result (list root))))
         (dolist (child (node-children root))
-          (setq result (collect-nodes child predicate result)))
+          (setq result (find-all-nodes child predicate result)))
         result)))
 
 (defun node-has (node attribute value)
   (member value (split-string (cdr (assoc attribute (node-attrs node))) #\Space) :test #'string=))
+
+(defun node-text-rec (node &optional (lst '()))
+  (if node
+      (let ((result lst))
+        (when (and (node-text node) (string/= (node-text node) ""))
+          (setq result (append result (list (node-text node)))))
+        (dolist (child (node-children node))
+          (setq result (node-text-rec child result)))
+        result)))
 
 (defun parse (input-file)
   (let ((+html+ (read-html-file input-file)))
