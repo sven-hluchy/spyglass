@@ -11,7 +11,8 @@
            #:find-all-nodes
            #:node-has
            #:node-text-rec
-           #:parse
+           #:parse-html
+           #:parse-file
            #:parse-into-file))
 
 (in-package :spyglass)
@@ -65,9 +66,11 @@
 ;;; list in the following format: ((position, name, attributes) ...)
 (defun find-all-tags (html)
   (loop for pos in (find-all html "<")
-        when (every #'alphanumericp (subseq html (1+ pos) (or (position #\Space html :start pos)
-                                                              (position #\> html :start pos))))
-        ; when (alpha-char-p (aref html (+ 1 pos)))
+        as tagname = (subseq html (1+ pos) (or (position #\Space html :start pos)
+                                               (position #\> html :start pos)))
+
+        when (and (> (length tagname) 0)
+                  (every #'alphanumericp tagname))
         collect (let* ((end (position #\> html :start pos))
                        (spc (position #\Space html :start pos :end end)))
                   (list (1+ pos)
@@ -104,7 +107,8 @@
                                     :attrs (caddr tag)
                                     :text nil
                                     :children nil)
-          when (eq type :START)
+          when (and (eq type :START)
+                    (> (length (cadr tag)) 0))
           do (progn
                (setf (node-children (car lst))
                      (append (node-children (car lst)) (list node)))
@@ -140,7 +144,9 @@
         result)))
 
 (defun node-has (node attribute value)
-  (member value (split-string (cdr (assoc attribute (node-attrs node))) #\Space) :test #'string=))
+  (if (stringp value)
+      (member value (split-string (cdr (assoc attribute (node-attrs node))) #\Space) :test #'string=)
+      (eq value (cdr (assoc attribute (node-attrs node))))))
 
 (defun node-text-rec (node &optional (lst '()))
   (if node
@@ -151,9 +157,12 @@
           (setq result (node-text-rec child result)))
         result)))
 
-(defun parse (input-file)
+(defun parse-html (html)
+  (car (match-tags html)))
+
+(defun parse-file (input-file)
   (let ((+html+ (read-html-file input-file)))
-    (match-tags +html+)))
+    (car (match-tags +html+))))
 
 (defun parse-into-file (input-file output-file)
   (let ((+html+ (read-html-file input-file)))
@@ -162,4 +171,4 @@
                             :if-exists :supersede)
       (with-standard-io-syntax
         (let ((*standard-output* stream))
-          (print (match-tags +html+)))))))
+          (print (car (match-tags +html+))))))))
